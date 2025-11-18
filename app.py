@@ -164,6 +164,120 @@ def display_overview_tab(analysis_results: Dict, file_data_list: List[Dict]):
     
     st.header("📊 Dashboard Overview")
     
+    # Report generation section
+    with st.expander("📄 Generate Comprehensive Report", expanded=False):
+        st.write("Export a comprehensive report with all analysis data, statistics, and visualizations.")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Generate and download CSV report
+            import pandas as pd
+            from io import StringIO
+            
+            # Prepare comprehensive data
+            report_data = []
+            for category, metrics in analysis_results.items():
+                for metric, data in metrics.items():
+                    row = {
+                        'Category': category,
+                        'Metric': metric,
+                    }
+                    # Add file values
+                    for idx, file_data in enumerate(file_data_list):
+                        row[f'File {idx+1} ({file_data["name"]})'] = data['values'][idx] if idx < len(data['values']) else None
+                        row[f'File {idx+1} Flagged'] = data['flags'][idx] if idx < len(data['flags']) else False
+                    
+                    # Add statistics
+                    row['Delta'] = data.get('delta', 'N/A')
+                    row['Percent Change'] = f"{data.get('percent_change', 'N/A'):.2f}%" if data.get('percent_change') is not None else 'N/A'
+                    row['Std Deviation'] = data.get('std_dev', 'N/A')
+                    
+                    report_data.append(row)
+            
+            df_report = pd.DataFrame(report_data)
+            csv_report = df_report.to_csv(index=False)
+            
+            st.download_button(
+                label="📊 Download CSV Report",
+                data=csv_report,
+                file_name=f"vng_comprehensive_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                help="Download complete analysis data as CSV"
+            )
+        
+        with col2:
+            # Generate summary report as text
+            from datetime import datetime
+            summary_lines = [
+                "VNG Analysis Comprehensive Report",
+                "=" * 50,
+                f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Files Analyzed: {len(file_data_list)}",
+                "",
+                "Files:",
+            ]
+            for idx, file_data in enumerate(file_data_list):
+                summary_lines.append(f"  {idx+1}. {file_data['name']}")
+            
+            summary_lines.extend([
+                "",
+                "Summary Statistics:",
+                "-" * 30,
+            ])
+            
+            # Calculate summary stats
+            total_metrics = sum(len(metrics) for metrics in analysis_results.values())
+            flagged_count = sum(1 for category_metrics in analysis_results.values() 
+                              for metric_data in category_metrics.values() 
+                              if any(metric_data.get('flags', [])))
+            significant_changes = sum(1 for category_metrics in analysis_results.values() 
+                                     for metric_data in category_metrics.values() 
+                                     if metric_data.get('percent_change') is not None 
+                                     and abs(metric_data['percent_change']) > 10)
+            
+            summary_lines.extend([
+                f"Total Metrics: {total_metrics}",
+                f"Flagged Metrics: {flagged_count}",
+                f"Significant Changes (>10%): {significant_changes}",
+                "",
+                "=" * 50,
+                "",
+                "Detailed Results:",
+                "-" * 30,
+            ])
+            
+            for category, metrics in sorted(analysis_results.items()):
+                summary_lines.append(f"\nCategory: {category}")
+                for metric, data in sorted(metrics.items()):
+                    summary_lines.append(f"  - {metric}:")
+                    for idx, file_data in enumerate(file_data_list):
+                        value = data['values'][idx] if idx < len(data['values']) else 'N/A'
+                        flagged = " (FLAGGED)" if idx < len(data['flags']) and data['flags'][idx] else ""
+                        summary_lines.append(f"    File {idx+1}: {value}{flagged}")
+                    if data.get('percent_change') is not None:
+                        summary_lines.append(f"    Percent Change: {data['percent_change']:.2f}%")
+                    if data.get('std_dev') is not None:
+                        summary_lines.append(f"    Std Deviation: {data['std_dev']:.2f}")
+            
+            summary_text = "\n".join(summary_lines)
+            
+            st.download_button(
+                label="📄 Download Text Report",
+                data=summary_text,
+                file_name=f"vng_comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain",
+                help="Download complete analysis as text report"
+            )
+        
+        with col3:
+            st.info("💡 **Report Generation**:\n\n"
+                   "• **CSV Report**: Complete data with all metrics, values, and statistics\n"
+                   "• **Text Report**: Human-readable summary with all findings\n\n"
+                   "For AI interpretations, see the 'AI Interpretation' tab.")
+    
+    st.divider()
+    
     # Summary cards
     render_summary_cards(analysis_results, file_data_list)
     
@@ -193,7 +307,7 @@ def display_charts_tab(analysis_results: Dict, file_data_list: List[Dict]):
     # Chart type selector
     chart_type = st.radio(
         "Select Chart Type",
-        ["Line Chart", "Category Comparison", "Radar Chart", "Box Plot", "Correlation Matrix", "Multi-Metric Comparison"],
+        ["Line Chart", "Category Comparison", "Radar Chart", "Box Plot", "Correlation Matrix"],
         horizontal=True,
         key="chart_type_selector"
     )
@@ -208,8 +322,6 @@ def display_charts_tab(analysis_results: Dict, file_data_list: List[Dict]):
         display_box_plot_selection(analysis_results, file_data_list)
     elif chart_type == "Correlation Matrix":
         display_correlation_matrix_selection(analysis_results)
-    elif chart_type == "Multi-Metric Comparison":
-        display_multi_metric_comparison(analysis_results, file_data_list)
 
 
 def display_detailed_analysis_tab(analysis_results: Dict, file_data_list: List[Dict]):
@@ -383,6 +495,15 @@ def display_box_plot_selection(analysis_results: Dict, file_data_list: List[Dict
 
 def display_correlation_matrix_selection(analysis_results: Dict):
     """Display correlation matrix selection interface"""
+    st.info(
+        "**Correlation Matrix**: Shows how metrics in a category relate to each other. "
+        "Values range from -1 to +1: "
+        "+1 = strong positive correlation (metrics increase together), "
+        "-1 = strong negative correlation (one increases as other decreases), "
+        "0 = no correlation. "
+        "This helps identify which metrics tend to change together across files."
+    )
+    
     category = st.selectbox(
         "Select Category",
         sorted(analysis_results.keys()),
@@ -404,45 +525,6 @@ def display_correlation_matrix_selection(analysis_results: Dict):
             export_chart_button(fig, f"correlation_{category}")
         except Exception as e:
             st.error(f"Error rendering correlation matrix: {str(e)}")
-
-
-def display_multi_metric_comparison(analysis_results: Dict, file_data_list: List[Dict]):
-    """Display multi-metric comparison interface"""
-    category = st.selectbox(
-        "Select Category",
-        sorted(analysis_results.keys()),
-        key="multi_metric_category"
-    )
-    
-    if category:
-        available_metrics = sorted(analysis_results[category].keys())
-        selected_metrics = st.multiselect(
-            "Select Metrics to Compare (2-5 recommended)",
-            available_metrics,
-            default=available_metrics[:min(3, len(available_metrics))] if available_metrics else [],
-            key="multi_metric_select"
-        )
-        
-        if len(selected_metrics) < 2:
-            st.info("Please select at least 2 metrics to compare.")
-        elif len(selected_metrics) > 10:
-            st.warning("Too many metrics selected. Please select 10 or fewer for better visualization.")
-        else:
-            from ui.components.charts import render_multi_metric_comparison
-            
-            try:
-                fig = render_multi_metric_comparison(
-                    analysis_results,
-                    file_data_list,
-                    category,
-                    selected_metrics
-                )
-                st.plotly_chart(fig, width='stretch')
-                
-                # Export button
-                export_chart_button(fig, f"multi_metric_{category}")
-            except Exception as e:
-                st.error(f"Error rendering multi-metric comparison: {str(e)}")
 
 
 def export_chart_button(fig, chart_name: str):

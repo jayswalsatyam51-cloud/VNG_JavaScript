@@ -80,7 +80,21 @@ def render_radar_chart(
         raise ValueError(f"Category {category} not found")
     
     category_metrics = analysis_results[category]
-    metrics = selected_metrics if selected_metrics else sorted(category_metrics.keys())
+    all_metrics = selected_metrics if selected_metrics else sorted(category_metrics.keys())
+    
+    # Filter out metrics with no data (all zeros or missing)
+    metrics_with_data = []
+    for metric in all_metrics:
+        if metric in category_metrics:
+            values = category_metrics[metric]['values']
+            # Check if metric has any non-zero, non-None data
+            if values and any(v is not None and v != 0 for v in values):
+                metrics_with_data.append(metric)
+    
+    if not metrics_with_data:
+        raise ValueError(f"No metrics with data found in category {category}")
+    
+    metrics = metrics_with_data
     
     # Normalize values for radar chart (0-100 scale)
     fig = go.Figure()
@@ -90,7 +104,6 @@ def render_radar_chart(
         for metric in metrics:
             if metric in category_metrics:
                 raw_value = category_metrics[metric]['values'][file_idx]
-                # Simple normalization (could be improved)
                 values.append(raw_value)
             else:
                 values.append(0)
@@ -103,11 +116,17 @@ def render_radar_chart(
             line_color=CHART_COLORS[file_idx % len(CHART_COLORS)]
         ))
     
+    # Calculate max value for range
+    max_val = 0
+    for metric in metrics:
+        if metric in category_metrics:
+            max_val = max(max_val, max(category_metrics[metric]['values']))
+    
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, max([max(category_metrics[m]['values']) for m in metrics if m in category_metrics], default=100)]
+                range=[0, max(max_val, 100)]
             )),
         showlegend=True,
         title=f'Radar Chart: {category}',
