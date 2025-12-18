@@ -1,0 +1,42 @@
+VNG TEST REPORT
+Patient ID: SAMPLE-001
+Date: 2024-01-15
+
+OCULAR MOTOR SCREENING
+
+Saccades:
+Latency: 180.5 msec
+Accuracy: 95.2 %
+Peak Velocity: 425.8 deg/sec
+
+Smooth Pursuit:
+Gain: 0.85
+Phase: 5.2 deg
+
+Optokinetics:
+Gain: 0.92
+Asymmetry: 3.1 %
+
+CALORIC TESTING
+
+Right Ear Warm:
+Slow Phase Velocity: 25.4 deg/sec | FLAG
+Duration: 180 sec
+
+Right Ear Cool:
+Slow Phase Velocity: 18.2 deg/sec
+Duration: 165 sec
+
+Left Ear Warm:
+Slow Phase Velocity: 22.1 deg/sec
+Duration: 175 sec
+
+Left Ear Cool:
+Slow Phase Velocity: 20.8 deg/sec
+Duration: 170 sec
+
+SUMMARY OF FLAGGED FINDINGS
+- Right Warm Caloric: Slow Phase Velocity reduced
+- Overall Caloric Asymmetry: 12.3% (Normal < 25%)
+
+END OF REPORT

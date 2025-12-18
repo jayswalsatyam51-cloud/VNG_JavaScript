@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNG Parser Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>VNG Parser Test</h1>
+
+    <div id="test-results"></div>
+
+    <script src="src/domain/models.js"></script>
+    <script src="src/domain/exceptions.js"></script>
+    <script src="src/config/constants.js"></script>
+    <script src="src/utils/statistics.js"></script>
+    <script src="src/modules/parser.js"></script>
+    <script src="src/modules/analyzer.js"></script>
+    <script src="src/services/parsingService.js"></script>
+    <script src="src/services/analysisService.js"></script>
+    <script src="src/services/fileService.js"></script>
+    <script src="src/repositories/sessionRepository.js"></script>
+
+    <script>
+        // Test data
+        const sampleVngData = `VNG TEST REPORT
+Patient ID: SAMPLE-001
+Date: 2024-01-15
+
+OCULAR MOTOR SCREENING
+
+Saccades:
+Latency: 180.5 msec
+Accuracy: 95.2 %
+Peak Velocity: 425.8 deg/sec
+
+Smooth Pursuit:
+Gain: 0.85
+Phase: 5.2 deg
+
+Optokinetics:
+Gain: 0.92
+Asymmetry: 3.1 %
+
+CALORIC TESTING
+
+Right Ear Warm:
+Slow Phase Velocity: 25.4 deg/sec | FLAG
+Duration: 180 sec
+
+Right Ear Cool:
+Slow Phase Velocity: 18.2 deg/sec
+Duration: 165 sec
+
+Left Ear Warm:
+Slow Phase Velocity: 22.1 deg/sec
+Duration: 175 sec
+
+Left Ear Cool:
+Slow Phase Velocity: 20.8 deg/sec
+Duration: 170 sec
+
+SUMMARY OF FLAGGED FINDINGS
+- Right Warm Caloric: Slow Phase Velocity reduced
+- Overall Caloric Asymmetry: 12.3% (Normal < 25%)
+
+END OF REPORT`;
+
+        const sampleVngData2 = `VNG TEST REPORT
+Patient ID: SAMPLE-002
+Date: 2024-02-15
+
+OCULAR MOTOR SCREENING
+
+Saccades:
+Latency: 185.2 msec
+Accuracy: 94.8 %
+Peak Velocity: 420.1 deg/sec
+
+Smooth Pursuit:
+Gain: 0.82
+Phase: 6.1 deg
+
+Optokinetics:
+Gain: 0.89
+Asymmetry: 4.2 %
+
+CALORIC TESTING
+
+Right Ear Warm:
+Slow Phase Velocity: 24.1 deg/sec
+Duration: 178 sec
+
+Right Ear Cool:
+Slow Phase Velocity: 17.8 deg/sec
+Duration: 162 sec
+
+Left Ear Warm:
+Slow Phase Velocity: 23.5 deg/sec
+Duration: 172 sec
+
+Left Ear Cool:
+Slow Phase Velocity: 21.2 deg/sec
+Duration: 168 sec
+
+SUMMARY OF FLAGGED FINDINGS
+None
+
+END OF REPORT`;
+
+        // Run tests
+        async function runTests() {
+            const resultsDiv = document.getElementById('test-results');
+
+            // Test 1: Parser functionality
+            try {
+                const parsedData = window.VNGParser.parseVngText(sampleVngData);
+                addTestResult('Parser Test', true, 'Successfully parsed VNG data', parsedData);
+            } catch (error) {
+                addTestResult('Parser Test', false, error.message);
+            }
+
+            // Test 2: Parsing Service
+            try {
+                const parsedFile = window.VNGServices.ParsingService.parseFile('sample1.txt', sampleVngData, 1024);
+                addTestResult('Parsing Service Test', true, 'Successfully created ParsedFile', {
+                    name: parsedFile.name,
+                    categories: Object.keys(parsedFile.data),
+                    sampleMetric: parsedFile.data['Saccades']?.['Latency']
+                });
+            } catch (error) {
+                addTestResult('Parsing Service Test', false, error.message);
+            }
+
+            // Test 3: Statistics functions
+            try {
+                const values = [10, 20, 30, 40, 50];
+                const stdDev = window.VNGStatistics.calculateStdDev(values);
+                const mean = window.VNGStatistics.calculateMean(values);
+                const percentChange = window.VNGStatistics.calculatePercentChange(10, 15);
+
+                addTestResult('Statistics Test', true, 'Statistical functions working', {
+                    stdDev: stdDev.toFixed(2),
+                    mean: mean.toFixed(2),
+                    percentChange: percentChange.toFixed(2) + '%'
+                });
+            } catch (error) {
+                addTestResult('Statistics Test', false, error.message);
+            }
+
+            // Test 4: Analysis Service
+            try {
+                const parsedFile1 = window.VNGServices.ParsingService.parseFile('sample1.txt', sampleVngData, 1024);
+                const parsedFile2 = window.VNGServices.ParsingService.parseFile('sample2.txt', sampleVngData2, 1024);
+
+                const analysisResults = window.VNGServices.AnalysisService.analyzeFiles([parsedFile1, parsedFile2]);
+
+                addTestResult('Analysis Service Test', true, 'Successfully analyzed files', {
+                    fileCount: analysisResults.fileCount,
+                    totalMetrics: analysisResults.totalMetrics,
+                    categories: Object.keys(analysisResults.results)
+                });
+            } catch (error) {
+                addTestResult('Analysis Service Test', false, error.message);
+            }
+
+            // Test 5: Domain models
+            try {
+                const metricValue = new window.VNGDomain.MetricValue(25.4, true);
+                const parsedFile = new window.VNGDomain.ParsedFile('test.txt', {}, 1024);
+
+                addTestResult('Domain Models Test', true, 'Domain models created successfully', {
+                    metricValue: {value: metricValue.value, isFlagged: metricValue.isFlagged},
+                    parsedFile: {name: parsedFile.name, sizeBytes: parsedFile.sizeBytes}
+                });
+            } catch (error) {
+                addTestResult('Domain Models Test', false, error.message);
+            }
+
+            // Test 6: File validation
+            try {
+                window.VNGServices.FileService.validateFile('test.txt', 1024);
+                addTestResult('File Validation Test', true, 'File validation passed');
+            } catch (error) {
+                addTestResult('File Validation Test', false, error.message);
+            }
+
+            try {
+                window.VNGServices.FileService.validateFile('test.exe', 1024);
+                addTestResult('File Validation Test (Invalid)', false, 'Should have rejected .exe file');
+            } catch (error) {
+                addTestResult('File Validation Test (Invalid)', true, 'Correctly rejected .exe file: ' + error.message);
+            }
+        }
+
+        function addTestResult(testName, success, message, data = null) {
+            const resultsDiv = document.getElementById('test-results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-section ${success ? 'success' : 'error'}`;
+
+            testDiv.innerHTML = `
+                <h3>${success ? '✅' : '❌'} ${testName}</h3>
+                <p>${message}</p>
+                ${data ? '<pre>' + JSON.stringify(data, null, 2) + '</pre>' : ''}
+            `;
+
+            resultsDiv.appendChild(testDiv);
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "vng-analyzer-js",
+  "version": "1.0.0",
+  "description": "VNG Data Analyzer - JavaScript version",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "http-server . -p 3000",
+    "dev": "http-server . -p 3000 -o",
+    "build": "mkdir -p dist && cp -r src/* dist/ && cp index.html dist/"
+  },
+  "keywords": ["vng", "medical", "analyzer", "javascript"],
+  "author": "Converted from Python",
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
